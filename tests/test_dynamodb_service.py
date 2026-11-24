@@ -12,7 +12,7 @@ moto = pytest.importorskip("moto")
 from moto import mock_aws  # noqa: E402
 
 from services.dynamodb_service import DynamoStore  # noqa: E402
-from services.errors import ConflictError, DuplicateStudentError, NotFoundError  # noqa: E402
+from services.errors import DuplicateStudentError, NotFoundError  # noqa: E402
 from services.menu_data import SAMPLE_MENU  # noqa: E402
 from services.order_service import OrderService  # noqa: E402
 
@@ -100,7 +100,7 @@ def test_place_order_writes_to_dynamodb_and_reads_back(service, aws):
     assert stored["student_phone"] == "+919123456780"
 
 
-def test_staff_listing_uses_date_index(service, aws):
+def test_staff_listing_uses_date_index(service):
     service.place_order({
         "customer": {"student_name": "Ananya Iyer", "student_phone": "9000000001", "student_id": "A1"},
         "items": [{"item_id": "M001", "quantity": 1}],

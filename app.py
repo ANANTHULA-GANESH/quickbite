@@ -16,7 +16,7 @@ from config import Config
 from services.errors import ConflictError, NotFoundError, ValidationError
 from services.menu_data import CATEGORIES
 from services.menu_service import MenuService
-from services.order_service import OrderService, estimate_prep_minutes, valid_order_id
+from services.order_service import OrderService, estimate_prep_minutes
 from services.sns_service import SmsNotifier
 from services.student_service import StudentService
 
