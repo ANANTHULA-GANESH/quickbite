@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Staff dashboard{% endblock %}
+{% block body_class %}dashboard-body{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="dash">
+  <aside class="dash-sidebar" aria-label="Staff navigation">
+    <a class="brand" href="{{ url_for('staff_dashboard') }}">
+      <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="" width="34" height="34">
+      <span>QuickBite <small>Staff</small></span>
+    </a>
+    <nav class="dash-nav">
+      <a href="#overview" class="active">Overview</a>
+      <a href="#orders">Orders</a>
+      <a href="#manage-items">Manage Items</a>
+      <a href="{{ url_for('index') }}" target="_blank" rel="noopener">Student site ↗</a>
+      <a href="{{ url_for('staff_logout') }}" class="logout">Log out</a>
+    </nav>
+  </aside>
+
+  <main class="dash-main">
+    <header class="dash-header">
+      <div>
+        <h1>Canteen dashboard</h1>
+        <p class="muted" id="dash-date"></p>
+      </div>
+      <div class="dash-actions">
+        <span id="last-refreshed" class="muted small"></span>
+        <button id="refresh-btn" class="btn btn-outline btn-small" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <section id="overview" class="kpi-grid" aria-label="Order counts for today">
+      <div class="kpi kpi-total"><span>Total today</span><strong data-kpi="Total">0</strong></div>
+      <div class="kpi kpi-pending"><span>Placed</span><strong data-kpi="Placed">0</strong></div>
+      <div class="kpi kpi-preparing"><span>Preparing</span><strong data-kpi="Preparing">0</strong></div>
+      <div class="kpi kpi-ready"><span>Ready for Pickup</span><strong data-kpi="Ready for Pickup">0</strong></div>
+      <div class="kpi kpi-collected"><span>Completed</span><strong data-kpi="Completed">0</strong></div>
+    </section>
+
+    <section id="orders" class="panel">
+      <div class="panel-toolbar">
+        <div class="filter-tabs" role="group" aria-label="Filter by status">
+          <button class="tab active" type="button" data-filter="all">All</button>
+          <button class="tab" type="button" data-filter="Placed">Placed</button>
+          <button class="tab" type="button" data-filter="Preparing">Preparing</button>
+          <button class="tab" type="button" data-filter="Ready for Pickup">Ready for Pickup</button>
+          <button class="tab" type="button" data-filter="completed">Completed</button>
+        </div>
+        <label class="search-box">
+          <span class="visually-hidden">Search orders</span>
+          <input id="staff-search" type="search" placeholder="Search order ID, name or phone" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="table-wrap">
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>Order</th><th>Placed</th><th>Student</th><th>Phone</th>
+              <th>Items</th><th>Total</th><th>Status</th><th>Payment</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="orders-body"></tbody>
+        </table>
+      </div>
+      <div id="orders-empty" class="empty-state" hidden>
+        <p>No orders match this view yet.</p>
+      </div>
+    </section>
+
+    <section id="manage-items" class="panel manage-items-panel">
+      <div class="manage-items-head">
+        <div>
+          <h2>Manage Items</h2>
+          <p class="muted small">Changes appear on the student menu automatically.</p>
+        </div>
+        <span id="items-last-refreshed" class="muted small"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="orders-table">
+          <thead>
+            <tr><th>Item</th><th>Category</th><th>Price (₹)</th><th>Availability</th><th>Action</th></tr>
+          </thead>
+          <tbody id="menu-items-body"></tbody>
+        </table>
+      </div>
+      <div id="items-empty" class="empty-state" hidden><p>No menu items found.</p></div>
+
+      <form id="add-item-form" class="add-item-form" novalidate>
+        <h3>Add Item</h3>
+        <div class="add-item-fields">
+          <label class="field">
+            <span>Item Name <em>*</em></span>
+            <input name="name" type="text" maxlength="80" required>
+          </label>
+          <label class="field">
+            <span>Price (₹) <em>*</em></span>
+            <input name="price" type="number" min="1" step="1" required>
+          </label>
+          <label class="field">
+            <span>Category <em>*</em></span>
+            <select name="category" required>
+              {% for category in categories %}
+              <option value="{{ category }}">{{ category }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="field">
+            <span>Image URL <small class="muted">(optional)</small></span>
+            <input name="image_url" type="text" maxlength="500" placeholder="https://… or /static/…">
+          </label>
+          <label class="field">
+            <span>Availability</span>
+            <select name="available">
+              <option value="yes">Available</option>
+              <option value="no">Not Available</option>
+            </select>
+          </label>
+        </div>
+        <button class="btn btn-primary" type="submit">Add Item</button>
+      </form>
+    </section>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/staff.js') }}"></script>
+<script src="{{ url_for('static', filename='js/manage_items.js') }}"></script>
+{% endblock %}

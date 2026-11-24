@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Order ahead{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container hero-inner">
+    <div class="hero-copy">
+      <p class="eyebrow">Campus Canteen · Pre-order</p>
+      <h1>Skip the queue. <span>Order ahead.</span></h1>
+      <p class="lead">Choose your food, track its preparation, and get an SMS when it is ready for pickup.</p>
+      <a class="btn btn-primary btn-lg" href="#menu">Browse the menu</a>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <img src="{{ url_for('static', filename='images/paneer-meal.jpg') }}" alt="">
+      <img src="{{ url_for('static', filename='images/masala-dosa.jpg') }}" alt="">
+      <img src="{{ url_for('static', filename='images/coffee.jpg') }}" alt="">
+    </div>
+  </div>
+</section>
+
+<section class="container featured-section" id="featured-section" hidden>
+  <div class="section-head">
+    <h2>Popular right now</h2>
+  </div>
+  <div id="featured-grid" class="menu-grid"></div>
+</section>
+
+<section class="container menu-section" id="menu" data-browse-only="{{ 'true' if browse_only else 'false' }}">
+  <div class="menu-toolbar">
+    <div class="chips" role="group" aria-label="Filter by category">
+      <button class="chip active" type="button" data-category="all">All</button>
+    </div>
+    <label class="search-box">
+      <span class="visually-hidden">Search the menu</span>
+      <input id="menu-search" type="search" placeholder="Search food or drinks" autocomplete="off">
+    </label>
+  </div>
+
+  <p id="menu-status" class="status-line" role="status">Loading menu…</p>
+  <div id="menu-grid" class="menu-grid" aria-live="polite"></div>
+
+  <div id="menu-empty" class="empty-state" hidden>
+    <p>No items match your search. Try another word or category.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/student_menu.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,19 @@
+[Unit]
+Description=QuickBite campus canteen pre-order app (gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=quickbite
+Group=quickbite
+WorkingDirectory=/opt/quickbite
+EnvironmentFile=/etc/quickbite/quickbite.env
+# Gunicorn listens only on localhost. nginx is the public-facing server.
+ExecStart=/opt/quickbite/venv/bin/gunicorn --workers 2 --threads 4 --timeout 30 --bind 127.0.0.1:8000 --access-logfile - --error-logfile - app:app
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}My Account{% endblock %}
+{% block content %}
+<section class="container page">
+  <h1>My Account</h1>
+  <div class="account-profile form-card">
+    <div><span class="muted small">Name</span><strong>{{ student.name }}</strong></div>
+    <div><span class="muted small">Phone Number</span><strong>{{ student.phone }}</strong></div>
+    <div><span class="muted small">College ID Number</span><strong>{{ student.student_id }}</strong></div>
+  </div>
+  <div class="section-head account-orders-heading">
+    <h2>Previous Orders</h2>
+    <span id="account-orders-status" class="muted small" role="status">Loading orders…</span>
+  </div>
+  <div id="account-orders" class="account-orders" aria-live="polite"></div>
+  <div id="account-orders-empty" class="empty-state" hidden><p>You haven't placed any orders yet.</p></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/account.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,366 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  QuickBite campus canteen pre-order app. Creates the VPC network, a public subnet with an
+  Internet Gateway, a security group, DynamoDB tables, a least-privilege IAM role and instance
+  profile, and one EC2 instance that runs the Flask app behind nginx and gunicorn.
+  No secrets are stored in this template. Set the staff password after deployment (see docs/aws_setup.md).
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label: { default: "Network" }
+        Parameters: [VpcCidr, PublicSubnetCidr, SecondSubnetCidr]
+      - Label: { default: "Access" }
+        Parameters: [SshAllowedCidr, KeyPairName]
+      - Label: { default: "Application" }
+        Parameters: [InstanceType, AppSourceUrl, SmsEnabled, MenuTableName, OrdersTableName, StudentsTableName]
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/(1[6-9]|2[0-8])$'
+    ConstraintDescription: Must be a valid IPv4 CIDR between /16 and /28.
+
+  PublicSubnetCidr:
+    Type: String
+    Default: 10.0.1.0/24
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/(1[6-9]|2[0-8])$'
+    ConstraintDescription: Must be a valid IPv4 CIDR.
+
+  SecondSubnetCidr:
+    Type: String
+    Default: 10.0.2.0/24
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/(1[6-9]|2[0-8])$'
+    ConstraintDescription: Must be a valid IPv4 CIDR.
+
+  SshAllowedCidr:
+    Type: String
+    Description: >
+      Your public IP with /32, for example 203.0.113.25/32. Find it at https://checkip.amazonaws.com
+      Do NOT use 0.0.0.0/0 for SSH.
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/(3[0-2]|[12]?\d)$'
+    ConstraintDescription: Must be an IPv4 CIDR such as 203.0.113.25/32.
+
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: Optional EC2 key pair name for SSH. Leave blank to use Session Manager or skip SSH.
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues: [t3.micro, t3.small, t3.medium]
+
+  AppSourceUrl:
+    Type: String
+    Default: ""
+    Description: >
+      Optional HTTPS URL of a .tar.gz of the QuickBite folder (for example a pre-signed S3 link).
+      If blank, copy the project to the instance yourself and run deployment/ec2_setup.sh.
+
+  SmsEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+
+  MenuTableName:
+    Type: String
+    Default: QuickBite-MenuItems
+    AllowedPattern: '^[A-Za-z0-9_.-]{3,255}$'
+
+  OrdersTableName:
+    Type: String
+    Default: QuickBite-Orders
+    AllowedPattern: '^[A-Za-z0-9_.-]{3,255}$'
+
+  StudentsTableName:
+    Type: String
+    Default: QuickBite-Students
+    AllowedPattern: '^[A-Za-z0-9_.-]{3,255}$'
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+    Description: Amazon Linux 2023 AMI looked up from SSM. Do not change unless you know why.
+
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
+
+Resources:
+  # ---------------- Network ----------------
+  QuickBiteVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true   # needed so EC2 gets a public DNS name
+      Tags:
+        - { Key: Name, Value: QuickBite-VPC }
+
+  QuickBiteIgw:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - { Key: Name, Value: QuickBite-IGW }
+
+  QuickBiteIgwAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref QuickBiteVpc
+      InternetGatewayId: !Ref QuickBiteIgw
+
+  QuickBitePublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref QuickBiteVpc
+      CidrBlock: !Ref PublicSubnetCidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true   # public subnet: instances here receive a public IPv4 address
+      Tags:
+        - { Key: Name, Value: QuickBite-Public-Subnet-1 }
+
+  QuickBiteSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref QuickBiteVpc
+      CidrBlock: !Ref SecondSubnetCidr
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: false   # created for future use; the app does not run here yet
+      Tags:
+        - { Key: Name, Value: QuickBite-Subnet-2 }
+
+  QuickBitePublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref QuickBiteVpc
+      Tags:
+        - { Key: Name, Value: QuickBite-Public-RT }
+
+  QuickBitePublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: QuickBiteIgwAttachment
+    Properties:
+      RouteTableId: !Ref QuickBitePublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref QuickBiteIgw
+
+  QuickBitePublicSubnet1RouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref QuickBitePublicSubnet1
+      RouteTableId: !Ref QuickBitePublicRouteTable
+
+  # ---------------- Firewall ----------------
+  QuickBiteSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: QuickBite-SG
+      GroupDescription: HTTP for students and staff and SSH only from the administrator IP
+      VpcId: !Ref QuickBiteVpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP web traffic (HTTPS can be added later)
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SshAllowedCidr
+          Description: SSH from administrator IP only
+      Tags:
+        - { Key: Name, Value: QuickBite-SG }
+
+  # ---------------- Database ----------------
+  QuickBiteMenuTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete        # learning project: stack delete removes data. Use Retain in production.
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Ref MenuTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: item_id, AttributeType: S }
+      KeySchema:
+        - { AttributeName: item_id, KeyType: HASH }
+      SSESpecification:
+        SSEEnabled: true
+
+  QuickBiteOrdersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Ref OrdersTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: order_id, AttributeType: S }
+        - { AttributeName: order_date, AttributeType: S }
+        - { AttributeName: created_at, AttributeType: S }
+        - { AttributeName: student_phone, AttributeType: S }
+      KeySchema:
+        - { AttributeName: order_id, KeyType: HASH }
+      GlobalSecondaryIndexes:
+        # Lets staff list one day's orders with a Query instead of scanning the table.
+        - IndexName: ByOrderDate
+          KeySchema:
+            - { AttributeName: order_date, KeyType: HASH }
+            - { AttributeName: created_at, KeyType: RANGE }
+          Projection:
+            ProjectionType: ALL
+        - IndexName: ByStudentPhone
+          KeySchema:
+            - { AttributeName: student_phone, KeyType: HASH }
+            - { AttributeName: created_at, KeyType: RANGE }
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+
+  QuickBiteStudentsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Ref StudentsTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: lookup_key, AttributeType: S }
+      KeySchema:
+        - { AttributeName: lookup_key, KeyType: HASH }
+      SSESpecification:
+        SSEEnabled: true
+
+  # ---------------- IAM (least privilege) ----------------
+  QuickBiteEc2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: QuickBite-EC2-Role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: QuickBite-LeastPrivilege
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: MenuTableReadWrite
+                Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:Scan, dynamodb:PutItem, dynamodb:UpdateItem]
+                Resource: !GetAtt QuickBiteMenuTable.Arn
+              - Sid: StudentAccounts
+                Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:TransactWriteItems]
+                Resource: !GetAtt QuickBiteStudentsTable.Arn
+              - Sid: OrdersReadWrite
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt QuickBiteOrdersTable.Arn
+                  - !Sub "${QuickBiteOrdersTable.Arn}/index/ByOrderDate"
+                  - !Sub "${QuickBiteOrdersTable.Arn}/index/ByStudentPhone"
+              - Sid: SendSmsNotifications
+                # SNS direct SMS publish does not support resource-level restriction, so Resource is "*".
+                Effect: Allow
+                Action: sns:Publish
+                Resource: "*"
+
+  QuickBiteInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: QuickBite-EC2-InstanceProfile
+      Roles: [!Ref QuickBiteEc2Role]
+
+  # ---------------- Compute ----------------
+  QuickBiteEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref QuickBitePublicSubnet1
+      SecurityGroupIds: [!Ref QuickBiteSecurityGroup]
+      IamInstanceProfile: !Ref QuickBiteInstanceProfile
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref AWS::NoValue]
+      MetadataOptions:
+        HttpTokens: required      # IMDSv2 only
+        HttpEndpoint: enabled
+      Tags:
+        - { Key: Name, Value: QuickBite-App }
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          # Runs once at first boot. Output is in /var/log/cloud-init-output.log
+          dnf install -y python3 python3-pip nginx tar gzip rsync
+
+          mkdir -p /etc/quickbite /opt/quickbite
+          # Environment file. The staff password hash is left blank on purpose:
+          # set it after deployment so no password is stored in this template.
+          cat > /etc/quickbite/quickbite.env <<EOF
+          APP_MODE=aws
+          SECRET_KEY=$(openssl rand -hex 32)
+          STAFF_PASSWORD_HASH=''
+          STAFF_SESSION_HOURS=8
+          TIMEZONE=Asia/Kolkata
+          AWS_REGION=${AWS::Region}
+          MENU_TABLE_NAME=${QuickBiteMenuTable}
+          ORDERS_TABLE_NAME=${QuickBiteOrdersTable}
+          STUDENTS_TABLE_NAME=${QuickBiteStudentsTable}
+          SNS_ENABLED=${SmsEnabled}
+          SESSION_COOKIE_SECURE=false
+          EOF
+          chmod 640 /etc/quickbite/quickbite.env
+
+          APP_SOURCE_URL="${AppSourceUrl}"
+          if [ -n "$APP_SOURCE_URL" ]; then
+            curl -fsSL "$APP_SOURCE_URL" -o /tmp/quickbite.tar.gz
+            mkdir -p /tmp/quickbite-src
+            tar -xzf /tmp/quickbite.tar.gz -C /tmp/quickbite-src
+            APP_ROOT=$(find /tmp/quickbite-src -maxdepth 2 -name app.py -printf '%h\n' | head -n 1)
+            cp -r "$APP_ROOT"/. /opt/quickbite/
+            bash /opt/quickbite/deployment/ec2_setup.sh
+          fi
+          # If no AppSourceUrl was given, copy the project here and run:
+          #   sudo bash /opt/quickbite/deployment/ec2_setup.sh
+
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !Ref QuickBiteVpc
+  PublicSubnet1Id:
+    Description: Public subnet where the EC2 instance runs
+    Value: !Ref QuickBitePublicSubnet1
+  SecondSubnetId:
+    Description: Second subnet (created for future use)
+    Value: !Ref QuickBiteSubnet2
+  SecurityGroupId:
+    Description: Security group attached to the EC2 instance
+    Value: !Ref QuickBiteSecurityGroup
+  InstanceId:
+    Description: EC2 instance ID
+    Value: !Ref QuickBiteEc2Instance
+  PublicIp:
+    Description: Public IPv4 address of the EC2 instance (changes if the instance is stopped and started)
+    Value: !GetAtt QuickBiteEc2Instance.PublicIp
+  ApplicationUrl:
+    Description: Open this in a browser once the app is running (HTTP only)
+    Value: !Sub "http://${QuickBiteEc2Instance.PublicDnsName}"
+  MenuTableName:
+    Description: DynamoDB menu table
+    Value: !Ref QuickBiteMenuTable
+  OrdersTableName:
+    Description: DynamoDB orders table
+    Value: !Ref QuickBiteOrdersTable
+  StudentsTableName:
+    Description: DynamoDB student accounts table
+    Value: !Ref QuickBiteStudentsTable
+  Ec2RoleName:
+    Description: IAM role attached to the EC2 instance
+    Value: !Ref QuickBiteEc2Role

@@ -1,0 +1,4 @@
+QuickBite menu images
+
+The JPG food images in this directory are AI-generated photorealistic illustrations,
+generated locally and stored with the application. SVG menu illustrations are no longer used.

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}QuickBite Login{% endblock %}
+{% block navbar %}{% endblock %}
+{% block content %}
+<section class="container page student-login-page">
+  <div class="form-card auth-card student-auth-card">
+    <h1>QuickBite Login</h1>
+    <form id="student-login-form" novalidate>
+      <label class="field">
+        <span>Name <em>*</em></span>
+        <input name="name" type="text" maxlength="60" autocomplete="name" required>
+        <small class="field-error" data-error-for="name" role="alert"></small>
+      </label>
+      <label class="field">
+        <span>Phone Number <em>*</em></span>
+        <input name="phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" required>
+        <small class="field-error" data-error-for="phone" role="alert"></small>
+      </label>
+      <div id="login-error" class="notice error" role="alert" {% if not login_message %}hidden{% endif %}>{{ login_message or "" }}</div>
+      <button class="btn btn-primary btn-block" type="submit">Login</button>
+    </form>
+    <a class="btn btn-outline btn-block skip-button" href="{{ url_for('index', browse=1) }}">Skip</a>
+
+    <div class="login-divider"><span>New here? Create account</span></div>
+
+    <form id="student-register-form" novalidate>
+      <label class="field">
+        <span>Name <em>*</em></span>
+        <input name="name" type="text" maxlength="60" autocomplete="name" required>
+        <small class="field-error" data-error-for="name" role="alert"></small>
+      </label>
+      <label class="field">
+        <span>Mobile Number <em>*</em></span>
+        <input name="phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" required>
+        <small class="field-error" data-error-for="phone" role="alert"></small>
+      </label>
+      <label class="field">
+        <span>College ID Card Number <em>*</em></span>
+        <input name="student_id" type="text" inputmode="numeric" maxlength="10" autocomplete="off" required>
+        <small class="field-error" data-error-for="student_id" role="alert"></small>
+      </label>
+      <div id="register-error" class="notice error" role="alert" hidden></div>
+      <button class="btn btn-primary btn-block" type="submit">Create Account</button>
+    </form>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/student_login.js') }}"></script>
+{% endblock %}

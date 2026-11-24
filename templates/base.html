@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}QuickBite{% endblock %} | Campus Canteen</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/logo.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}" data-browse-only="{{ 'true' if browse_only else 'false' }}">
+  {% if app_mode == 'demo' %}
+  <div class="demo-banner" role="status">
+    DEMO MODE: orders are saved to a local file on this computer. No AWS services are used.
+  </div>
+  {% endif %}
+
+  {% block navbar %}
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a class="brand" href="{{ url_for('index') }}">
+        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="" width="36" height="36">
+        <span>QuickBite</span>
+      </a>
+      <nav class="nav-links" aria-label="Main">
+        {% if student %}
+        <a href="{{ url_for('index') }}#menu">Menu</a>
+        <a href="{{ url_for('track_lookup') }}">Track order</a>
+        <a href="{{ url_for('student_account') }}">My Account</a>
+        <a class="cart-link" href="{{ url_for('cart_page') }}">
+          <span aria-hidden="true">🛒</span> Cart
+          <span class="badge-count" data-cart-count>0</span>
+        </a>
+        <form method="post" action="{{ url_for('student_logout') }}">
+          <button class="nav-logout" type="submit">Log out</button>
+        </form>
+        {% else %}
+        <a href="{{ url_for('index') }}">Sign In</a>
+        {% if browse_only %}
+        <a class="cart-link" href="{{ url_for('cart_page') }}">Cart</a>
+        {% endif %}
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  {% endblock %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div>
+        <strong>QuickBite</strong> · Campus canteen pre-ordering
+        <p class="muted small">Order ahead, skip the queue, collect when ready.</p>
+      </div>
+      <a class="muted small" href="{{ url_for('staff_login') }}">Canteen staff login</a>
+    </div>
+  </footer>
+  {% endblock %}
+
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,32 @@
+# Secrets and local config
+.env
+*.pem
+*.ppk
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+venv/
+.venv/
+
+# Local data
+instance/
+*.db
+*.sqlite3
+
+# Editors and OS
+.DS_Store
+.vscode/
+.idea/
+
+.env
+logs/
+
+.env
+logs/
+
+*.db
+*.sqlite
+*.sqlite3
+instance/

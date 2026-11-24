@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Track order{% endblock %}
+
+{% block content %}
+<section class="container page narrow" id="tracking-root" data-order-id="{{ order_id }}">
+  <h1>Track your order</h1>
+
+  {% if not order_id %}
+  <form id="lookup-form" class="form-card inline-form">
+    <label class="field grow">
+      <span>Order ID</span>
+      <input id="lookup-input" name="order_id" type="text" placeholder="e.g. QB-2026-3F9A1C2B" autocomplete="off" required>
+    </label>
+    <button class="btn btn-primary" type="submit">Track</button>
+  </form>
+  {% else %}
+  <p id="tracking-loading" class="status-line" role="status">Loading your order…</p>
+  <div id="tracking-error" class="notice error" role="alert" hidden></div>
+
+  <div id="tracking-body" hidden>
+    <div class="track-card">
+      <div class="track-head">
+        <div>
+          <p class="muted small">Order ID</p>
+          <h2 id="t-order-id"></h2>
+        </div>
+        <span id="t-status" class="badge"></span>
+      </div>
+
+      <ol class="timeline" id="t-timeline" aria-label="Order progress"></ol>
+
+      <p id="t-message" class="lead-small"></p>
+
+      <div class="actions actions-split">
+        <button id="refresh-btn" class="btn btn-outline" type="button">Refresh status</button>
+        <span id="t-updated" class="muted small"></span>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h3>Order details</h3>
+      <ul id="t-items" class="item-list"></ul>
+      <div class="summary-row total"><span>Total</span><span id="t-total"></span></div>
+      <p class="muted small" id="t-placed"></p>
+    </div>
+
+    <div class="notice info">
+      <strong>Pickup instructions:</strong> When the status shows Ready for Pickup, collect your order from the
+      campus canteen counter. Show your Order ID if asked.
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tracking.js') }}"></script>
+{% endblock %}

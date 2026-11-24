@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<section class="container page">
+  <p class="breadcrumb"><a href="{{ url_for('cart_page') }}">Cart</a> / Checkout</p>
+  <h1>Checkout</h1>
+
+  <div class="cart-layout">
+    <div class="form-card">
+      <h2>Ordering as</h2>
+      <p><strong>{{ student.name }}</strong></p>
+      <p class="muted">{{ student.phone }}</p>
+      <div id="form-error" class="notice error" role="alert" hidden></div>
+      <fieldset class="payment-options">
+        <legend>Payment method</legend>
+        <label><input type="radio" name="payment_method" value="counter" checked> Pay at Counter</label>
+        <label><input type="radio" name="payment_method" value="online"> Pay Online</label>
+      </fieldset>
+      <p class="muted small payment-note">Payment is collected at the canteen counter when you pick up your order.</p>
+      <p class="muted small">Order updates are sent to your registered mobile number.</p>
+      <button id="place-order-btn" class="btn btn-primary btn-block btn-lg" type="button">Place order</button>
+    </div>
+
+    <aside class="summary-card" aria-labelledby="checkout-summary-title">
+      <h2 id="checkout-summary-title">Items</h2>
+      <ul id="checkout-items" class="item-list"></ul>
+      <div class="summary-row total"><span>Order total</span><span id="checkout-total">₹0</span></div>
+      <p class="muted small">Estimated preparation time is shown on your confirmation page.</p>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/cart.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Staff login{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+
+{% block content %}
+<section class="auth-wrap">
+  <form class="form-card auth-card" method="post" action="{{ url_for('staff_login') }}">
+    <a class="brand brand-center" href="{{ url_for('index') }}">
+      <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="" width="40" height="40">
+      <span>QuickBite Staff</span>
+    </a>
+    <p class="muted">Sign in to manage canteen orders.</p>
+
+    {% if error %}
+    <div class="notice error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if configured %}
+    <label class="field">
+      <span>Staff password</span>
+      <input name="password" type="password" required autocomplete="current-password" autofocus>
+    </label>
+    <button class="btn btn-primary btn-block btn-lg" type="submit">Sign in</button>
+    {% else %}
+    <div class="notice info">
+      Staff login is not configured yet. Run <code>python scripts/make_password_hash.py</code>
+      and set the printed <code>STAFF_PASSWORD_HASH</code> value in your environment.
+    </div>
+    {% endif %}
+
+    <p class="small muted">Beginner-level protection. See docs/security.md before any public use.</p>
+  </form>
+</section>
+{% endblock %}
+
+{% block footer %}{% endblock %}

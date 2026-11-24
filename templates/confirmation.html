@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Order {{ order.order_id }}{% endblock %}
+
+{% block content %}
+<section class="container page narrow">
+  <div class="success-card">
+    <div class="check-icon" aria-hidden="true">✓</div>
+    <h1>Your order has been placed successfully!</h1>
+    <p class="order-id">Order ID: <strong>{{ order.order_id }}</strong></p>
+
+    <dl class="details">
+      <div><dt>Student</dt><dd>{{ order.student_name }}</dd></div>
+      <div><dt>Placed on</dt><dd>{{ order.created_at|replace("T", " ") }}</dd></div>
+      <div><dt>Status</dt><dd><span class="badge badge-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span></dd></div>
+      <div><dt>Payment</dt><dd>{{ "Pay Online" if order.payment_method == "online" else "Pay at Counter" }} · Pay at pickup</dd></div>
+      <div><dt>Estimated preparation time</dt><dd>About {{ order.estimated_prep_minutes }} minutes <small class="muted">(estimate only)</small></dd></div>
+    </dl>
+
+    <h2>Items</h2>
+    <ul class="item-list">
+      {% for item in order["items"] %}
+      <li><span>{{ item.quantity }} × {{ item.name }}</span><span>₹{{ item.line_total }}</span></li>
+      {% endfor %}
+    </ul>
+    <div class="summary-row total"><span>Total</span><span>₹{{ order.total_amount }}</span></div>
+
+    <div class="notice info">
+      <strong>Pickup instructions:</strong> Track your order and collect it from the campus canteen counter
+      once the status shows <strong>Ready for Pickup</strong>. Keep your Order ID for reference.
+    </div>
+
+    <div class="actions">
+      <a class="btn btn-primary" href="{{ url_for('track_order', order_id=order.order_id) }}">Track order</a>
+      <a class="btn btn-outline" href="{{ url_for('index') }}">Order more</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

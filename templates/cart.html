@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Your cart{% endblock %}
+
+{% block content %}
+<section class="container page">
+  <p class="breadcrumb"><a href="{{ url_for('index') }}">Menu</a> / Cart</p>
+  <h1>Your cart</h1>
+
+  <div class="cart-layout">
+    <div>
+      <div id="cart-notice" class="notice" hidden role="status"></div>
+      <div id="cart-lines" class="cart-lines" aria-live="polite"></div>
+      <div id="cart-empty" class="empty-state" hidden>
+        <p>Your cart is empty.</p>
+        <a class="btn btn-primary" href="{{ url_for('index') }}">Browse the menu</a>
+      </div>
+    </div>
+
+    <aside class="summary-card" aria-labelledby="summary-title">
+      <h2 id="summary-title">Order summary</h2>
+      <div class="summary-row"><span>Items</span><span id="summary-count">0</span></div>
+      <div class="summary-row total"><span>Order total</span><span id="summary-total">₹0</span></div>
+      <p class="muted small">Prices are confirmed by the server when you check out.</p>
+      <a id="checkout-link" class="btn btn-primary btn-block" href="{{ url_for('checkout_page') }}">Proceed to checkout</a>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/cart.js') }}"></script>
+{% endblock %}
